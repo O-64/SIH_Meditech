@@ -1652,10 +1652,32 @@ export default function Home({ onNavigate }) {
   );
   const [lastAiText, setLastAiText] = useState("");
   const [speakTrigger, setSpeakTrigger] = useState(0);
+  const [assignedCounsellor, setAssignedCounsellor] = useState(null);
 
   const bottomRef = useRef(null);
   const deepLinkHandled = useRef(false);
   const lastSeenRef = useRef(null);
+
+  useEffect(() => {
+    const fetchMyCounsellor = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const res = await fetch(`${API}/api/v1/auth/my-counsellor`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.counsellor) {
+            setAssignedCounsellor(data.counsellor);
+          }
+        }
+      } catch (err) {
+        // silent
+      }
+    };
+    fetchMyCounsellor();
+  }, []);
 
   const triggerSpeak = (text) => {
     setLastAiText(text);
@@ -1967,6 +1989,48 @@ export default function Home({ onNavigate }) {
               </button>
             </div>
           </header>
+
+          {/* Empanelled Government Counsellor Banner at Top of AI Bot & Dashboard */}
+          {assignedCounsellor && (
+            <div
+              className="mx-6 mt-3 px-4 py-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs flex-shrink-0 animate-in slide-in-from-top duration-300"
+              style={{
+                background: "linear-gradient(135deg, rgba(6, 78, 59, 0.55) 0%, rgba(15, 23, 42, 0.85) 100%)",
+                border: "1px solid rgba(16, 185, 129, 0.4)",
+                boxShadow: "0 4px 20px rgba(16, 185, 129, 0.15)",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-base flex-shrink-0">
+                  🩺
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-xs">
+                      Allotted Doctor: {assignedCounsellor.name}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      Empanelled Govt Counsellor
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    {assignedCounsellor.clinic_name || "MHPSS Trauma Care"} • Specialization: {assignedCounsellor.specialization || "Clinical Psychiatrist"}
+                  </p>
+                </div>
+              </div>
+
+              {assignedCounsellor.phone && (
+                <a
+                  href={`tel:${assignedCounsellor.phone}`}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md transition whitespace-nowrap cursor-pointer"
+                  title="Direct emergency line to assigned counsellor"
+                >
+                  <span>📞 Call:</span>
+                  <span>{assignedCounsellor.phone}</span>
+                </a>
+              )}
+            </div>
+          )}
 
           {activeView === "history" ? (
             <MoodHistoryView />

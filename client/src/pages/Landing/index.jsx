@@ -35,64 +35,104 @@ function Landing({ onNavigate }) {
             Sahaay
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {/* Option 1: Login as Victim */}
           <button
             onClick={() => onNavigate("login")}
             style={{
-              background: "transparent",
-              border: "1.5px solid rgba(255,255,255,0.2)",
+              background: "rgba(245, 158, 11, 0.12)",
+              border: "1.5px solid rgba(245, 158, 11, 0.4)",
               borderRadius: "12px",
-              padding: "8px 18px",
-              color: "#e2e8f0",
-              fontSize: "14px",
-              fontWeight: 500,
+              padding: "7px 14px",
+              color: "#fde68a",
+              fontSize: "13px",
+              fontWeight: 600,
               cursor: "pointer",
               backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
               transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)";
-              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.background = "rgba(245, 158, 11, 0.25)";
+              e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.7)";
+              e.currentTarget.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-              e.currentTarget.style.color = "#e2e8f0";
+              e.currentTarget.style.background = "rgba(245, 158, 11, 0.12)";
+              e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.4)";
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            Sign in
+            <span>👤</span>
+            <span>Login as Victim</span>
           </button>
 
+          {/* Option 2: Login as Counsellor */}
           <button
-            onClick={() => onNavigate("signup")}
+            onClick={() => onNavigate("counsellor_login")}
             style={{
-              background: "linear-gradient(135deg, #fbbf24, #fb7185)",
-              border: "none",
+              background: "rgba(6, 182, 212, 0.12)",
+              border: "1.5px solid rgba(6, 182, 212, 0.4)",
               borderRadius: "12px",
-              padding: "8px 18px",
-              color: "#0f172a",
-              fontSize: "14px",
-              fontWeight: 700,
+              padding: "7px 14px",
+              color: "#a5f3fc",
+              fontSize: "13px",
+              fontWeight: 600,
               cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(251,191,36,0.35)",
+              backdropFilter: "blur(8px)",
               transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
             }}
             onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(6, 182, 212, 0.25)";
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.7)";
               e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow =
-                "0 8px 24px rgba(251,191,36,0.5)";
-              e.currentTarget.style.filter = "brightness(1.05)";
             }}
             onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(6, 182, 212, 0.12)";
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.4)";
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 4px 16px rgba(251,191,36,0.35)";
-              e.currentTarget.style.filter = "brightness(1)";
             }}
           >
-            Get started
+            <span>🩺</span>
+            <span>Login as Counsellor</span>
+          </button>
+
+          {/* Option 3: Login as Admin */}
+          <button
+            onClick={() => onNavigate("admin_login")}
+            style={{
+              background: "rgba(16, 185, 129, 0.15)",
+              border: "1.5px solid rgba(16, 185, 129, 0.45)",
+              borderRadius: "12px",
+              padding: "7px 14px",
+              color: "#a7f3d0",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(8px)",
+              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(16, 185, 129, 0.28)";
+              e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.8)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(16, 185, 129, 0.15)";
+              e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.45)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <span>🏛️</span>
+            <span>Login as Admin</span>
           </button>
         </div>
       </nav>

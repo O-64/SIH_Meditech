@@ -198,3 +198,39 @@ export const submitQuestionnaire = async (req, res) => {
   }
 };
 
+// GET /api/v1/auth/my-counsellor
+export const getMyCounsellor = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Check user for counsellor_id
+    const { data: user, error: uErr } = await supabase
+      .from("users")
+      .select("id, name, counsellor_id")
+      .eq("id", userId)
+      .single();
+
+    if (uErr || !user || !user.counsellor_id) {
+      return res.json({ allocated: false, counsellor: null });
+    }
+
+    const { data: counsellor, error: cErr } = await supabase
+      .from("counsellors")
+      .select("id, name, phone, clinic_name, specialization, license_number, qualification")
+      .eq("id", user.counsellor_id)
+      .single();
+
+    if (cErr || !counsellor) {
+      return res.json({ allocated: false, counsellor: null });
+    }
+
+    res.json({
+      allocated: true,
+      counsellor,
+    });
+  } catch (err) {
+    console.error("getMyCounsellor error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+

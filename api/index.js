@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import authRouter from "./routes/user.routes.js";
 import genAiRouter from "./routes/genAi.routes.js";
+import adminRouter from "./routes/admin.routes.js";
+import counsellorRouter from "./routes/counsellor.routes.js";
 import { startScheduler } from "./jobs/messageSchedular.js";
 
 const PORT = process.env.PORT || 5000;
@@ -27,6 +29,8 @@ app.use(
 app.use(express.json());
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1", genAiRouter);
+app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/counsellor", counsellorRouter);
 
 console.log("URL:", process.env.SUPABASE_URL);
 console.log("KEY exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
