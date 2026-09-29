@@ -18,9 +18,71 @@ const llm = new ChatGroq({
 
 const LOW_MOOD_LABELS = ["sad", "anxious", "stressed", "angry", "depressed"];
 const HELPLINES = [
+  { name: "National Helpline Against Atrocities (NHAA)", number: "14566", hours: "24/7 (Toll-free)" },
   { name: "iCall", number: "9152987821", hours: "Mon–Sat, 8am–10pm" },
   { name: "Vandrevala Foundation", number: "1860-2662-345", hours: "24/7" },
 ];
+
+// ── Fetch victim case assessment / questionnaire ─────────────
+export const getVictimCaseProfile = async (userId) => {
+  try {
+    const { data: q } = await supabase
+      .from("case_questionnaires")
+      .select("incident_type, incident_timing, case_status, support_needed, initial_feeling")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return q || null;
+  } catch {
+    return null;
+  }
+};
+
+export const buildCaseContextPrompt = (caseProfile) => {
+  const stageAdvice = {
+    "I have not reported it yet":
+      "The victim has not reported the incident yet. Be gentle, avoid pressuring them to report unless they ask, and validate their feelings of hesitation or fear.",
+    "Complaint has been filed":
+      "A formal complaint was recently filed. Acknowledge that taking this step takes immense courage. The initial aftermath can be emotionally draining and unsettling.",
+    "Investigation is ongoing":
+      "Police/official investigation is currently ongoing. Address the anxiety of evidence gathering, statements, police visits, and uncertainty.",
+    "Case is in trial/court":
+      "The case is currently in trial/court. Address courtroom stress, hearings, facing legal cross-examinations, and long delays.",
+    "Case has been resolved":
+      "The legal proceedings have concluded. Healing continues even after court resolution; support long-term recovery and rebuilding routine.",
+    "I am currently seeking rehabilitation/support":
+      "The user is focusing on psychosocial recovery, counseling, and rebuilding their life. Validate their resilience and progress.",
+    "I am seeking compensation":
+      "The user is dealing with victim compensation applications or economic relief. Acknowledge administrative exhaustion.",
+  };
+
+  const advice = caseProfile?.case_status
+    ? (stageAdvice[caseProfile.case_status] || "Support them empathetically based on their current stage.")
+    : "Provide supportive, non-intrusive psychosocial grounding.";
+
+  return `
+[VICTIM CASE CONTEXT - SAHAYA ADAPTIVE INTELLIGENCE]
+- Incident Category: ${caseProfile?.incident_type || "Confidential / General"}
+- Incident Timing: ${caseProfile?.incident_timing || "Unspecified"}
+- Case Stage: ${caseProfile?.case_status || "Not specified"}
+- Primary Support Sought: ${caseProfile?.support_needed || "Emotional & Mental Health"}
+- Initial Emotional State: ${caseProfile?.initial_feeling || "Unspecified"}
+- Case-Stage Guidance: ${advice}
+
+[HUMAN-IN-THE-LOOP CONTACT NETWORK (HARDCODED)]
+• Mental Health / Therapist Support: Tele-MANAS (24/7 Govt Toll-Free): 14416 (or 1800-891-4416) | iCall Psychosocial Support: 9152987821 | NHAA Distress Helpline: 14566
+• Legal Aid / Advocate Support: NALSA (National Legal Services Authority - Free Legal Aid): 15100 | National Victim Legal Desk: 1800-180-1510
+
+RESPONSE FORMAT & ESCALATION DIRECTIVES (MANDATORY):
+1. FORMAT: Return your entire response in 2 to 4 concise bullet points (each starting with '• '). DO NOT WRITE IN PARAGRAPHS.
+2. CASE-SPECIFIC: Give suggestions and emotional validation tailored directly to their case stage (${caseProfile?.case_status || "current stage"}) and incident context.
+3. HUMAN-IN-THE-LOOP:
+   - If the user feels mentally unstable, emotionally overwhelmed, panicked, or deeply anxious: Include a bullet point advising them to reach out to a professional therapist/counsellor at Tele-MANAS (14416) or iCall (9152987821).
+   - If the user feels confused, uncertain, or asks about legal procedures, police statements, or court matters: Include a bullet point advising them to reach out to a legal advocate or free legal aid at NALSA (15100).
+   - Remind that AI is for continuous distress tracking and emotional support, while human professionals provide licensed legal and clinical solutions.`;
+};
 
 // ── Fetch conversation history ────────────────────────────────
 const getConversationHistory = async (userId, checkinId) => {
@@ -479,9 +541,9 @@ export const morningCheckin = async (req, res) => {
     const isSelfHarm = await detectSelfHarm(message);
     if (isSelfHarm) {
       const helplinesText =
-        "iCall (9152987821, Mon–Sat 8am–10pm) or Vandrevala Foundation (1860-2662-345, 24/7)";
-      const selfHarmPrompt = `You are a warm caring friend texting ${user.name}.
-        They said something suggesting self-harm. Respond warmly (3-4 sentences), weave in helplines naturally: ${helplinesText}.
+        "National Helpline Against Atrocities (toll-free 14566, 24/7), iCall (9152987821, Mon–Sat 8am–10pm), or Vandrevala Foundation (1860-2662-345, 24/7)";
+      const selfHarmPrompt = `You are SAHAYA, a compassionate psychosocial support friend texting ${user.name}.
+        They said something suggesting self-harm or deep crisis. Respond warmly (3-4 sentences), weave in helplines naturally: ${helplinesText}.
         Do NOT say "I'm here for you", "you're not alone", "safe space". End by encouraging them to call.`;
       const aiResponse = await llm.invoke([new SystemMessage(selfHarmPrompt)]);
       const raw = aiResponse.content;
@@ -598,11 +660,20 @@ export const morningCheckin = async (req, res) => {
         }
       }
 
-      // Generate normal chat reply
-      const systemPrompt = `You are a warm empathetic companion like a close friend, not a therapist.
+      // Generate normal chat reply with Case-Stage Intelligence
+      const caseProfile = await getVictimCaseProfile(userId);
+      const casePrompt = buildCaseContextPrompt(caseProfile);
+
+      const systemPrompt = `You are SAHAYA, an empathetic AI psychosocial companion for victims of atrocities.
         User: ${user.name}. Mood today: ${existingCheckin.mood_label} (${existingCheckin.mood_score}/10).
-        ${cbtTriggered ? `They've had rough days in a row. Be extra warm. Casually mention you have a short exercise that might help — keep it optional-feeling.` : ""}
-        Rules: warm, human, conversational. 2-3 sentences max. Never say "I'm here for you", "you're not alone", "safe space".`;
+        ${casePrompt}
+        ${cbtTriggered ? `• Suggest a 1-minute box-breathing or 5-4-3-2-1 sensory grounding exercise as one of your points.` : ""}
+        FORMAT AND STYLE:
+        - Output MUST be 2 to 4 bullet points (using '• '). NEVER write paragraphs.
+        - Give case-stage specific, actionable suggestions.
+        - If mentally unstable or deeply overwhelmed, include: Therapist / Tele-MANAS (14416) or iCall (9152987821).
+        - If confused about case proceedings, police, or court, include: Legal Advocate / NALSA Free Legal Aid (15100).
+        - Never say "I'm here for you", "you're not alone", or "as an AI".`;
 
       const aiResponse = await llm.invoke(
         buildMessages(systemPrompt, history, message),
@@ -729,13 +800,22 @@ export const morningCheckin = async (req, res) => {
       );
     }, 15 * 1000);
 
-    // Generate AI reply
+    // Generate AI reply with Case-Stage Intelligence
     const history = await getConversationHistory(userId, checkin.id);
-    const systemPrompt = `You are a warm empathetic companion like a close friend, not a therapist.
+    const caseProfile = await getVictimCaseProfile(userId);
+    const casePrompt = buildCaseContextPrompt(caseProfile);
+
+    const systemPrompt = `You are SAHAYA, an empathetic AI psychosocial companion for victims of atrocities.
       User: ${user.name}. Today: ${mood.mood_label} (${mood.mood_score}/10).
+      ${casePrompt}
       ${events.length > 0 ? `Events today: ${events.map((e) => e.title).join(", ")}` : ""}
-      ${cbtTriggered ? `Rough days in a row — be extra warm. Casually mention a short exercise might help.` : ""}
-      Rules: warm, human. 3-4 sentences. Never say "I'm here for you", "you're not alone", "safe space".`;
+      ${cbtTriggered ? `• Suggest a 1-minute box-breathing or sensory grounding exercise as one of your points.` : ""}
+      FORMAT AND STYLE:
+      - Output MUST be 2 to 4 bullet points (using '• '). NEVER write paragraphs.
+      - Give case-stage specific, actionable suggestions.
+      - If mentally unstable or deeply overwhelmed, include: Therapist / Tele-MANAS (14416) or iCall (9152987821).
+      - If confused about case proceedings, police, or court, include: Legal Advocate / NALSA Free Legal Aid (15100).
+      - Never say "I'm here for you", "you're not alone", or "as an AI".`;
 
     const aiResponse = await llm.invoke(
       buildMessages(systemPrompt, history, message),

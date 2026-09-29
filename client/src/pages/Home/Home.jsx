@@ -246,7 +246,7 @@ const ChatBubble = ({ msg, onOpenCBT }) => {
         </div>
       )}
       <div
-        className={`max-w-xs lg:max-w-sm flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}
+        className={`max-w-sm lg:max-w-lg flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}
       >
         {msg.mood && isUser && (
           <div className="flex justify-end">
@@ -261,6 +261,7 @@ const ChatBubble = ({ msg, onOpenCBT }) => {
                   background: "linear-gradient(135deg,#f59e0b,#f43f5e)",
                   color: "#fff",
                   borderRadius: "1rem 1rem 0.25rem 1rem",
+                  whiteSpace: "pre-line",
                 }
               : {
                   background: "rgba(255,255,255,0.06)",
@@ -268,6 +269,7 @@ const ChatBubble = ({ msg, onOpenCBT }) => {
                   color: "#e2e8f0",
                   borderRadius: "0.25rem 1rem 1rem 1rem",
                   backdropFilter: "blur(8px)",
+                  whiteSpace: "pre-line",
                 }
           }
         >

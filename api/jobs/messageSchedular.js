@@ -23,20 +23,41 @@ const getConversationHistory = async (userId, checkinId) => {
   return data || [];
 };
 
-const generateProactiveMessage = async (type, user, checkin, history) => {
+const getVictimCaseProfile = async (userId) => {
+  try {
+    const { data: q } = await supabase
+      .from("case_questionnaires")
+      .select("incident_type, incident_timing, case_status, support_needed, initial_feeling")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return q || null;
+  } catch {
+    return null;
+  }
+};
+
+const generateProactiveMessage = async (type, user, checkin, history, caseProfile) => {
+  const caseContextSnippet = caseProfile
+    ? `They are currently at the case stage: "${caseProfile.case_status}". Incident type: "${caseProfile.incident_type}". Primary support desired: "${caseProfile.support_needed}".`
+    : "";
+
   const prompts = {
-    mood_followup: `You are a warm, empathetic mental health companion like a close friend checking back in.
-      The user's name is ${user.name}.
-      A little while ago, they checked in feeling "${checkin.mood_label}" (mood score: ${checkin.mood_score}/10).
+    mood_followup: `You are SAHAYA, an empathetic AI psychosocial companion for a victim of atrocity, following up on ${user.name}.
+      Earlier, they checked in feeling "${checkin.mood_label}" (mood score: ${checkin.mood_score}/10).
       ${checkin.raw_message ? `What they initially shared: "${checkin.raw_message}"` : ""}
+      ${caseContextSnippet}
       Your goal:
-      1. Gently reference how they were feeling earlier (e.g. if they felt stressed, anxious, sad, tired, or happy).
-      2. Ask if they are feeling any better now or how things have been going.
-      3. Ask how their mood is right now so you can check in on them.
+      Format your response strictly as 2 to 3 concise bullet points (using '• '):
+      • Point 1: Gently check in regarding how they are feeling now compared to earlier in their case journey.
+      • Point 2: Ask for their current mood score (1-10) and invite them to share how they are holding up.
+      • Point 3: Remind them that if they feel emotionally overwhelmed, they can reach out to a therapist at Tele-MANAS (14416), or if confused about their legal case, to an advocate at NALSA (15100).
       Rules:
-      - 2 to 3 sentences maximum.
-      - Sound human, empathetic, and natural like a supportive friend texting them.
-      - NEVER use cliché therapist phrases like "I am checking in to see", "safe space", or "as an AI".`,
+      - STRICTLY IN 2-3 BULLET POINTS. NO PARAGRAPHS.
+      - Warm, natural, and case-sensitive.
+      - NEVER use cliché phrases like "I am checking in to see", "safe space", or "as an AI".`,
 
     event_followup: `You are a warm mental health companion like a close friend.
       The user's name is ${user.name}.
@@ -174,12 +195,16 @@ export const processScheduledMessages = async () => {
           checkin.id,
         );
 
-        // generate the proactive message based on previous mood
+        // get victim case profile
+        const caseProfile = await getVictimCaseProfile(scheduledMsg.user_id);
+
+        // generate the proactive message based on previous mood and case stage
         const messageText = await generateProactiveMessage(
           scheduledMsg.message_type,
           user,
           checkin,
           history,
+          caseProfile,
         );
 
         // save to conversations so it appears in chat

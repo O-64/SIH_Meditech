@@ -75,3 +75,19 @@ CREATE TABLE IF NOT EXISTS public.scheduled_messages (
 
 CREATE INDEX IF NOT EXISTS idx_scheduled_messages_status_due 
     ON public.scheduled_messages(status, scheduled_for);
+
+-- 6. CASE QUESTIONNAIRES (SAHAYA Initial Case Assessment)
+CREATE TABLE IF NOT EXISTS public.case_questionnaires (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    incident_type TEXT NOT NULL,
+    incident_timing TEXT NOT NULL,
+    case_status TEXT NOT NULL,
+    support_needed TEXT NOT NULL,
+    initial_feeling TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_case_questionnaires_user 
+    ON public.case_questionnaires(user_id);
+

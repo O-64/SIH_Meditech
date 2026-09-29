@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Questionnaire from "./pages/Questionnaire";
 import Home from "./pages/Home/Home";
 
 const VIDEO_URL =
@@ -16,7 +17,11 @@ export default function App() {
     if (token) setPage("home");
   }, []);
 
-  const showVideo = page === "landing" || page === "login" || page === "signup";
+  const showVideo =
+    page === "landing" ||
+    page === "login" ||
+    page === "signup" ||
+    page === "questionnaire";
 
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
@@ -42,10 +47,11 @@ export default function App() {
         <source src={VIDEO_URL} type="video/mp4" />
       </video>
 
-      {page === "landing" && <Landing onNavigate={setPage} />}
-      {page === "login"   && <Login   onNavigate={setPage} />}
-      {page === "signup"  && <Signup  onNavigate={setPage} />}
-      {page === "home"    && <Home    onNavigate={setPage} />}
+      {page === "landing"       && <Landing       onNavigate={setPage} />}
+      {page === "login"         && <Login         onNavigate={setPage} />}
+      {page === "signup"        && <Signup        onNavigate={setPage} />}
+      {page === "questionnaire" && <Questionnaire onNavigate={setPage} />}
+      {page === "home"          && <Home          onNavigate={setPage} />}
     </div>
   );
 }

@@ -69,7 +69,7 @@ function Signup({ onNavigate }) {
       }
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      onNavigate("home");
+      onNavigate("questionnaire");
     } catch {
       setError("Could not connect to server");
     } finally {

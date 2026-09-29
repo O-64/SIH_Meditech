@@ -101,3 +101,100 @@ export const login = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const submitQuestionnaire = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      incident_type,
+      incident_timing,
+      case_status,
+      support_needed,
+      initial_feeling,
+    } = req.body;
+
+    if (!incident_type || !case_status || !initial_feeling) {
+      return res.status(400).json({ error: "Please answer the required questions." });
+    }
+
+    // Map initial feeling to a baseline mood score and label
+    const feelingMap = {
+      "Calm / okay": { mood_label: "okay", mood_score: 7 },
+      "Slightly stressed": { mood_label: "stressed", mood_score: 5 },
+      "Worried or anxious": { mood_label: "anxious", mood_score: 4 },
+      "Very distressed": { mood_label: "distressed", mood_score: 2 },
+      "I feel unsafe or unable to cope": { mood_label: "crisis", mood_score: 1 },
+      "Prefer not to say": { mood_label: "okay", mood_score: 5 },
+    };
+
+    const initialMood = feelingMap[initial_feeling] || { mood_label: "okay", mood_score: 5 };
+
+    // 1. Try inserting into case_questionnaires table
+    let questionnaireId = null;
+    try {
+      const { data: qData, error: qError } = await supabase
+        .from("case_questionnaires")
+        .insert({
+          user_id: userId,
+          incident_type,
+          incident_timing: incident_timing || "Prefer not to say",
+          case_status,
+          support_needed: support_needed || "I am not sure yet",
+          initial_feeling,
+        })
+        .select()
+        .single();
+
+      if (!qError && qData) {
+        questionnaireId = qData.id;
+        console.log("✓ Saved to case_questionnaires table:", questionnaireId);
+      } else {
+        console.warn("Notice: case_questionnaires insert note:", qError?.message);
+      }
+    } catch (tblErr) {
+      console.warn("Table case_questionnaires:", tblErr.message);
+    }
+
+    // 2. Also initialize/sync baseline daily checkin for today with context
+    const today = new Date().toISOString().split("T")[0];
+    const rawSummary = `[SAHAYA Initial Case Assessment] Type: ${incident_type} | Timing: ${incident_timing} | Stage: ${case_status} | Support: ${support_needed} | Feeling: ${initial_feeling}`;
+
+    const { data: existingCheckin } = await supabase
+      .from("daily_checkins")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("checkin_date", today)
+      .maybeSingle();
+
+    if (existingCheckin) {
+      await supabase
+        .from("daily_checkins")
+        .update({
+          mood_score: initialMood.mood_score,
+          mood_label: initialMood.mood_label,
+          raw_message: rawSummary,
+        })
+        .eq("id", existingCheckin.id);
+    } else {
+      await supabase.from("daily_checkins").insert({
+        user_id: userId,
+        checkin_date: today,
+        mood_score: initialMood.mood_score,
+        mood_label: initialMood.mood_label,
+        raw_message: rawSummary,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Initial Case Questionnaire recorded successfully",
+      questionnaireId,
+      initialMood,
+      case_stage: case_status,
+    });
+  } catch (err) {
+    console.error("submitQuestionnaire error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
