@@ -1,8 +1,9 @@
 import { useState } from "react";
 import SahaayLogo from "../../components/shared/SahaayLogo";
+import { getApiUrl } from "../../config/api";
 
 function Login({ onNavigate }) {
-  const baseurl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const baseurl = getApiUrl();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

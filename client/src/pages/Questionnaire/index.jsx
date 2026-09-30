@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SahaayLogo from "../../components/shared/SahaayLogo";
+import { getApiUrl } from "../../config/api";
 
 const INCIDENT_TYPES = [
   "Physical violence/assault",
@@ -80,7 +81,7 @@ export default function Questionnaire({ onNavigate }) {
     setError("");
 
     const token = localStorage.getItem("token");
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const apiUrl = getApiUrl();
 
     try {
       const res = await fetch(`${apiUrl}/api/v1/auth/questionnaire`, {

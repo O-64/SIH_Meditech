@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import CBTModal from "../../components/shared/CbtModel";
+import HybridDistressEngine from "../../components/victim/HybridDistressEngine";
+import CounsellorCallingModal from "../../components/victim/CounsellorCallingModal";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -1147,6 +1149,7 @@ const Sidebar = ({
       >
         {[
           { id: "chat", icon: "💬", label: "Chat with Sahaay" },
+          { id: "distress", icon: "🧠", label: "Adaptive Distress Engine" },
           { id: "history", icon: "📅", label: "Mood History" },
         ].map(({ id, icon, label }) => (
           <button
@@ -1653,6 +1656,9 @@ export default function Home({ onNavigate }) {
   const [lastAiText, setLastAiText] = useState("");
   const [speakTrigger, setSpeakTrigger] = useState(0);
   const [assignedCounsellor, setAssignedCounsellor] = useState(null);
+  const [isCallingCounsellor, setIsCallingCounsellor] = useState(false);
+  const [callingReason, setCallingReason] = useState("");
+  const [liveAnxiety, setLiveAnxiety] = useState(null);
 
   const bottomRef = useRef(null);
   const deepLinkHandled = useRef(false);
@@ -1873,6 +1879,21 @@ export default function Home({ onNavigate }) {
         setAllMessages((prev) => [...prev, aiMsg]);
         triggerSpeak(data.reply);
       }
+
+      // Check Groq Adaptive Engine Escalation
+      if (data.distress_evaluation) {
+        const evalData = data.distress_evaluation;
+        if (evalData.anxiety_level) setLiveAnxiety(evalData.anxiety_level);
+        if (evalData.should_call_counsellor || data.should_call_counsellor) {
+          setCallingReason(
+            evalData.counsellor_call_reason ||
+            "Severe anxiety and acute crisis marker detected by Adaptive Engine."
+          );
+          setTimeout(() => {
+            setIsCallingCounsellor(true);
+          }, 600);
+        }
+      }
     } catch {
       const err = {
         id: Date.now() + 1,
@@ -1909,6 +1930,12 @@ export default function Home({ onNavigate }) {
   return (
     <>
       {cbtOpen && <CBTModal onClose={() => setCbtOpen(false)} />}
+      <CounsellorCallingModal
+        isOpen={isCallingCounsellor}
+        onClose={() => setIsCallingCounsellor(false)}
+        assignedCounsellor={assignedCounsellor}
+        triggerReason={callingReason}
+      />
       <div
         className="h-screen flex overflow-hidden"
         style={{
@@ -1952,22 +1979,63 @@ export default function Home({ onNavigate }) {
               )}
               <div>
                 <h1 className="text-white font-semibold font-serif text-sm">
-                  {activeView === "history"
-                    ? "Mood History"
-                    : chatOpen
-                      ? "Chat with Sahaay"
-                      : "Dashboard"}
+                  {activeView === "distress"
+                    ? "Adaptive Distress Engine (Groq AI)"
+                    : activeView === "history"
+                      ? "Mood History"
+                      : chatOpen
+                        ? "Chat with Sahaay"
+                        : "Dashboard"}
                 </h1>
                 <p className="text-slate-600 text-xs">
-                  {activeView === "history"
-                    ? `${totalCheckins} entries`
-                    : chatOpen
-                      ? "Your companion is here 🌙"
-                      : `Welcome back, ${user?.name?.split(" ")[0] || "there"}`}
+                  {activeView === "distress"
+                    ? "Live multi-factor anxiety & trauma tracking"
+                    : activeView === "history"
+                      ? `${totalCheckins} entries`
+                      : chatOpen
+                        ? "Your companion is here 🌙"
+                        : `Welcome back, ${user?.name?.split(" ")[0] || "there"}`}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Live Anxiety Badge from Adaptive Engine */}
+              {liveAnxiety !== null && (
+                <button
+                  onClick={() => {
+                    if (liveAnxiety >= 75) {
+                      setCallingReason(`Acute Anxiety Detected (${liveAnxiety}%). Counsellor Escalation Triggered.`);
+                      setIsCallingCounsellor(true);
+                    } else {
+                      setActiveView("distress");
+                    }
+                  }}
+                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all ${
+                    liveAnxiety >= 75
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse"
+                      : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                  }`}
+                  title={liveAnxiety >= 75 ? "Click to call counsellor" : "View Distress Analytics"}
+                >
+                  <span className={`w-2 h-2 rounded-full ${liveAnxiety >= 75 ? "bg-rose-500" : "bg-emerald-400"}`} />
+                  <span>Anxiety: {liveAnxiety}%</span>
+                  <span className="text-[10px] opacity-75">
+                    • {liveAnxiety >= 75 ? "Escalate (Mod 5) 🚨" : "Intervene (Mod 4)"}
+                  </span>
+                </button>
+              )}
+
+              {/* Direct Emergency Call Button */}
+              <button
+                onClick={() => {
+                  setCallingReason("Emergency Line initiated by victim from navigation bar.");
+                  setIsCallingCounsellor(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                title="Emergency Calling to Empanelled Counsellor"
+              >
+                <span>📞 Call Counsellor</span>
+              </button>
               {history.length > 0 && (
                 <div
                   className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full"
@@ -2032,7 +2100,15 @@ export default function Home({ onNavigate }) {
             </div>
           )}
 
-          {activeView === "history" ? (
+          {activeView === "distress" ? (
+            <HybridDistressEngine
+              assignedCounsellor={assignedCounsellor}
+              onTriggerCall={() => {
+                setCallingReason("Emergency Counsellor Escalation initiated by patient.");
+                setIsCallingCounsellor(true);
+              }}
+            />
+          ) : activeView === "history" ? (
             <MoodHistoryView />
           ) : !chatOpen ? (
             <div className="flex-1 overflow-y-auto px-6 py-10">
@@ -2077,12 +2153,44 @@ export default function Home({ onNavigate }) {
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-center mb-8">
+                <div className="flex justify-center mb-6">
                   <button
                     onClick={openChat}
                     className="Sahaay-btn Sahaay-btn-amber Sahaay-btn-xl"
                   >
                     <span>🌙 Talk to Sahaay →</span>
+                  </button>
+                </div>
+
+                {/* Adaptive Distress Engine Hero Card on Dashboard */}
+                <div
+                  className="rounded-2xl p-4.5 mb-8 border flex items-center justify-between gap-4 cursor-pointer hover:border-emerald-400/50 transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.7) 100%)",
+                    borderColor: "rgba(52, 211, 153, 0.3)",
+                  }}
+                  onClick={() => setActiveView("distress")}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-2xl flex-shrink-0">
+                      🧠
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">
+                          Hybrid Distress Engine & 4 Line Charts
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                          Live Groq AI
+                        </span>
+                      </div>
+                      <p className="text-slate-300 text-xs mt-1">
+                        Real-time Mood, Distress Trend, Case Stage Range Animation & Chat History References.
+                      </p>
+                    </div>
+                  </div>
+                  <button className="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs whitespace-nowrap shadow-md">
+                    View Charts →
                   </button>
                 </div>
                 {history.length > 0 ? (
@@ -2135,6 +2243,43 @@ export default function Home({ onNavigate }) {
           ) : (
             <>
               <div className="flex-1 overflow-y-auto px-6 py-6">
+                {/* Animated Connecting to Counsellor Banner when case is severe */}
+                {isCallingCounsellor && (
+                  <div
+                    className="mb-4 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in duration-300"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(15, 23, 42, 0.9) 100%)",
+                      borderColor: "rgba(239, 68, 68, 0.5)",
+                      boxShadow: "0 0 25px rgba(239, 68, 68, 0.25)",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xl flex-shrink-0 animate-bounce">
+                        📡
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          <span className="font-bold text-white text-xs tracking-wide uppercase">
+                            Severe Case Alert: Connecting to Counsellor...
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-0.5">
+                          Adaptive Engine routing encrypted priority hotline to{" "}
+                          {assignedCounsellor?.name || "Dr. Radhika Sharma"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsCallingCounsellor(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs shadow-md transition whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                      Open Call Screen 📞
+                    </button>
+                  </div>
+                )}
+
                 {messages.map((msg) => (
                   <ChatBubble
                     key={msg.id}

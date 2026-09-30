@@ -4,6 +4,7 @@ import StepAccount from "./StepAccount";
 import StepAbout from "./StepAbout";
 import StepLocation from "./StepLocation";
 import SahaayLogo from "../../components/shared/SahaayLogo";
+import { getApiUrl } from "../../config/api";
 
 function Signup({ onNavigate }) {
   const [step, setStep] = useState(0);
@@ -53,7 +54,7 @@ function Signup({ onNavigate }) {
     setError("");
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const apiUrl = getApiUrl();
       const res = await fetch(
         `${apiUrl}/api/v1/auth/signup`,
         {

@@ -16,7 +16,11 @@ app.use(
       if (
         !origin ||
         origin.includes("vercel.app") ||
-        origin.includes("localhost")
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1") ||
+        origin.startsWith("http://192.168.") ||
+        origin.startsWith("http://10.") ||
+        origin.startsWith("http://172.")
       ) {
         callback(null, true);
       } else {
